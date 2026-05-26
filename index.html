@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>ResellBooks — Live Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:     #080C0A;
+  --bg2:    #0F1612;
+  --bg3:    #162018;
+  --green:  #00FF9C;
+  --border: rgba(0,255,156,.14);
+  --dimmer: rgba(0,255,156,.07);
+  --text:   #E8F5EE;
+  --muted:  #5A7A65;
+  --yellow: #FFE566;
+  --blue:   #66D4FF;
+  --red:    #FF6B6B;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:var(--bg);overflow:hidden;}
+body{font-family:'JetBrains Mono',monospace;color:var(--text);font-size:11px;}
+
+/* scanlines */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.06) 2px,rgba(0,0,0,.06) 4px);pointer-events:none;z-index:999;}
+
+.screen{width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* TOP BAR */
+.topbar{
+  background:var(--bg);border-bottom:1px solid var(--border);
+  padding:9px 14px;display:flex;align-items:center;
+  justify-content:space-between;flex-shrink:0;
+}
+.app-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--green);letter-spacing:.05em;}
+.app-ver{font-size:8px;color:var(--muted);margin-top:1px;}
+.live-badge{display:flex;align-items:center;gap:5px;background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.3);padding:3px 9px;border-radius:20px;}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:pr 1s infinite;}
+@keyframes pr{0%,100%{opacity:1;}50%{opacity:.2;}}
+.live-text{font-size:8px;color:var(--red);letter-spacing:.1em;}
+
+/* TAB BAR */
+.tabbar{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;}
+.tabbar::-webkit-scrollbar{display:none;}
+.tab{padding:7px 12px;font-size:9px;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;flex-shrink:0;transition:all .2s;cursor:pointer;}
+.tab.active{color:var(--green);border-bottom-color:var(--green);}
+
+/* CONTENT */
+.content{flex:1;overflow:hidden;position:relative;}
+.view{position:absolute;inset:0;overflow-y:auto;padding:10px;opacity:0;pointer-events:none;transition:opacity .3s;}
+.view::-webkit-scrollbar{width:2px;}
+.view::-webkit-scrollbar-thumb{background:var(--border);}
+.view.active{opacity:1;pointer-events:all;}
+
+/* ── DASHBOARD ── */
+.kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;}
+.kpi{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:8px 10px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;inset:0;background:var(--dimmer);opacity:0;transition:opacity .3s;}
+.kpi.flash::before{opacity:1;}
+.kl{font-size:7px;color:var(--muted);letter-spacing:.1em;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.kv{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;line-height:1.1;}
+.kv.g{color:var(--green);}
+.kv.y{color:var(--yellow);}
+.kv.b{color:var(--blue);}
+
+.sec{font-size:8px;color:var(--muted);letter-spacing:.12em;margin-bottom:7px;display:flex;align-items:center;gap:6px;}
+.sec::after{content:'';flex:1;height:1px;background:var(--border);}
+
+/* Platform table */
+.pt{width:100%;border-collapse:collapse;margin-bottom:12px;}
+.pt th{font-size:7px;color:var(--muted);padding:5px 6px;text-align:right;border-bottom:1px solid var(--border);letter-spacing:.06em;}
+.pt th:first-child{text-align:left;}
+.pt td{font-size:9px;padding:6px 6px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03);}
+.pt td:first-child{text-align:left;color:var(--text);}
+.pt tr:last-child td{color:var(--green);font-weight:700;border-top:1px solid var(--border);border-bottom:none;font-size:10px;}
+
+/* Quarterly — 2x2 on mobile */
+.q-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.q-card{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
+.ql{font-size:7px;color:var(--muted);margin-bottom:3px;}
+.qp{font-size:10px;color:var(--green);font-weight:700;margin-bottom:2px;}
+.qt{font-size:8px;color:var(--yellow);}
+
+/* ── SALES LOG ── */
+.sh-row{display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr 1fr;gap:3px;padding:5px 8px;background:var(--bg3);border-radius:5px 5px 0 0;}
+.sh{font-size:7px;color:var(--muted);letter-spacing:.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sr{display:grid;grid-template-columns:2fr 1.2fr 1fr 1fr 1fr 1fr;gap:3px;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.03);font-size:8px;}
+.sr:nth-child(even){background:rgba(255,255,255,.01);}
+.sr div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sr.new{background:rgba(0,255,156,.08);border-left:2px solid var(--green);animation:si .4s ease;}
+@keyframes si{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+.pc{color:var(--green);font-weight:700;}
+.mc{color:var(--blue);}
+
+/* Platform badges */
+.pb{display:inline-block;font-size:7px;padding:1px 4px;border-radius:3px;font-weight:700;}
+.pb-amz{background:rgba(255,153,0,.15);color:#FF9900;}
+.pb-eby{background:rgba(77,130,255,.15);color:#6699FF;}
+.pb-wmt{background:rgba(0,119,188,.15);color:#0077BC;}
+.pb-mer{background:rgba(255,72,72,.15);color:#FF6B6B;}
+.pb-psh{background:rgba(210,0,180,.15);color:#D200B4;}
+.pb-fbm{background:rgba(24,119,242,.15);color:#1877F2;}
+
+/* ── LOT TRACKER ── */
+.lot-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;}
+.lc{background:var(--bg2);border:1px solid var(--border);border-radius:7px;padding:9px 10px;}
+.lid{font-size:8px;color:var(--green);margin-bottom:3px;letter-spacing:.06em;}
+.lsrc{font-size:10px;font-weight:700;color:var(--text);margin-bottom:7px;}
+.lstats{display:flex;gap:8px;margin-bottom:7px;}
+.lsi .lsl{font-size:7px;color:var(--muted);margin-bottom:2px;}
+.lsi .lsv{font-size:10px;font-weight:700;}
+.lsv.y{color:var(--yellow);}
+.lsv.b{color:var(--blue);}
+.lsv.g{color:var(--green);}
+.lroi{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:5px;}
+.rl{font-size:7px;color:var(--muted);}
+.rv{font-size:13px;font-weight:800;color:var(--green);}
+
+/* ── TAX ── */
+.tt{width:100%;border-collapse:collapse;margin-bottom:12px;}
+.tt th{font-size:7px;color:var(--muted);padding:5px 6px;text-align:right;border-bottom:1px solid var(--border);letter-spacing:.06em;}
+.tt th:first-child{text-align:left;}
+.tt td{font-size:9px;padding:7px 6px;text-align:right;border-bottom:1px solid rgba(255,255,255,.03);}
+.tt td:first-child{text-align:left;color:var(--text);font-size:8px;}
+.td{color:var(--yellow);font-weight:700;}
+.tp{color:var(--green);}
+.ti{background:var(--bg2);border:1px solid var(--border);border-left:2px solid var(--yellow);border-radius:6px;padding:9px 11px;}
+.tit{font-size:9px;color:var(--yellow);margin-bottom:4px;}
+.tib{font-size:8px;color:var(--muted);line-height:1.6;}
+
+/* ── BOTTOM CTA ── */
+.btm{background:var(--bg2);border-top:1px solid var(--border);padding:8px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;}
+.btm-l{min-width:0;}
+.btm-l strong{color:var(--green);font-size:11px;display:block;margin-bottom:1px;white-space:nowrap;}
+.btm-l span{font-size:8px;color:var(--muted);white-space:nowrap;}
+.btm-r{background:var(--green);color:#000;font-family:'Syne',sans-serif;font-size:10px;font-weight:800;padding:7px 14px;border-radius:5px;white-space:nowrap;flex-shrink:0;}
+
+/* ── OVERLAY ── */
+.ov{position:fixed;bottom:55px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.88);border:1px solid var(--green);border-radius:7px;padding:6px 14px;font-size:10px;color:var(--green);z-index:500;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;}
+.ov.show{opacity:1;}
+
+@keyframes cu{from{opacity:.4;transform:translateY(3px);}to{opacity:1;transform:translateY(0);}}
+.ca{animation:cu .3s ease;}
+</style>
+</head>
+<body>
+<div class="screen">
+
+  <div class="topbar">
+    <div>
+      <div class="app-name">ResellBooks</div>
+      <div class="app-ver">v1.0 · Younek Boutique</div>
+    </div>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      <div class="live-text">LIVE DEMO</div>
+    </div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab active" onclick="sv('dashboard',this)">📊 Dashboard</div>
+    <div class="tab" onclick="sv('sales',this)">📦 Sales Log</div>
+    <div class="tab" onclick="sv('lots',this)">🏷️ Lot Tracker</div>
+    <div class="tab" onclick="sv('tax',this)">🧾 Tax</div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="view active" id="view-dashboard">
+      <div class="kpi-row">
+        <div class="kpi" id="kpi-rev"><div class="kl">TOTAL REVENUE</div><div class="kv g" id="val-rev">$4,218.50</div></div>
+        <div class="kpi" id="kpi-pro"><div class="kl">GROSS PROFIT</div><div class="kv y" id="val-pro">$1,740.22</div></div>
+        <div class="kpi" id="kpi-mar"><div class="kl">AVG MARGIN</div><div class="kv b" id="val-mar">38.9%</div></div>
+      </div>
+      <div class="sec">PLATFORM BREAKDOWN</div>
+      <table class="pt">
+        <thead><tr><th>PLATFORM</th><th>SOLD</th><th>REVENUE</th><th>PROFIT</th><th>MARGIN</th></tr></thead>
+        <tbody>
+          <tr><td>Amazon</td><td>14</td><td>$1,840</td><td style="color:var(--green)">$900</td><td style="color:var(--blue)">48.9%</td></tr>
+          <tr><td>eBay</td><td>22</td><td>$980</td><td style="color:var(--green)">$360</td><td style="color:var(--blue)">36.7%</td></tr>
+          <tr><td>Walmart</td><td>8</td><td>$641</td><td style="color:var(--green)">$221</td><td style="color:var(--blue)">34.4%</td></tr>
+          <tr><td>Mercari</td><td>11</td><td>$440</td><td style="color:var(--green)">$160</td><td style="color:var(--blue)">36.4%</td></tr>
+          <tr><td>Poshmark</td><td>6</td><td>$198</td><td style="color:var(--green)">$70</td><td style="color:var(--blue)">35.4%</td></tr>
+          <tr><td>Facebook MP</td><td>5</td><td>$120</td><td style="color:var(--green)">$30</td><td style="color:var(--blue)">24.8%</td></tr>
+          <tr><td>TOTAL</td><td>66</td><td>$4,219</td><td>$1,741</td><td>38.9%</td></tr>
+        </tbody>
+      </table>
+      <div class="sec">QUARTERLY SUMMARY</div>
+      <div class="q-row">
+        <div class="q-card"><div class="ql">Q1 · JAN–MAR</div><div class="qp">$1,420.00</div><div class="qt">Tax: $355.00</div></div>
+        <div class="q-card"><div class="ql">Q2 · APR–JUN</div><div class="qp">$2,100.00</div><div class="qt">Tax: $525.00</div></div>
+        <div class="q-card"><div class="ql">Q3 · JUL–SEP</div><div class="qp">$1,780.00</div><div class="qt">Tax: $445.00</div></div>
+        <div class="q-card"><div class="ql">Q4 · OCT–DEC</div><div class="qp">$2,840.00</div><div class="qt">Tax: $710.00</div></div>
+      </div>
+    </div>
+
+    <!-- SALES LOG -->
+    <div class="view" id="view-sales">
+      <div class="sh-row">
+        <div class="sh">ITEM NAME</div>
+        <div class="sh">PLATFORM</div>
+        <div class="sh">COST</div>
+        <div class="sh">SALE $</div>
+        <div class="sh">PROFIT</div>
+        <div class="sh">MARGIN</div>
+      </div>
+      <div id="sales-rows">
+        <div class="sr"><div>Nike Hoodie</div><div><span class="pb pb-psh">POSH</span></div><div>$12</div><div>$48</div><div class="pc">$31.20</div><div class="mc">65.0%</div></div>
+        <div class="sr"><div>LEGO Set</div><div><span class="pb pb-amz">AMZ</span></div><div>$18</div><div>$55</div><div class="pc">$28.44</div><div class="mc">51.7%</div></div>
+        <div class="sr"><div>Sony Headphones</div><div><span class="pb pb-eby">EBAY</span></div><div>$22</div><div>$89</div><div class="pc">$52.70</div><div class="mc">59.2%</div></div>
+        <div class="sr"><div>Air Force 1s</div><div><span class="pb pb-mer">MER</span></div><div>$35</div><div>$95</div><div class="pc">$46.50</div><div class="mc">48.9%</div></div>
+        <div class="sr"><div>Xbox Controller</div><div><span class="pb pb-wmt">WMT</span></div><div>$14</div><div>$42</div><div class="pc">$22.40</div><div class="mc">53.3%</div></div>
+        <div class="sr"><div>Dyson Fan</div><div><span class="pb pb-fbm">FBM</span></div><div>$40</div><div>$120</div><div class="pc">$76.00</div><div class="mc">63.3%</div></div>
+      </div>
+      <div style="margin-top:10px;padding:9px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;text-align:center;">
+        <div style="font-size:8px;color:var(--muted);margin-bottom:3px;">PROFIT CALCULATED AUTOMATICALLY</div>
+        <div style="font-size:8px;color:var(--green);">Enter cost + sale price → done ✓</div>
+      </div>
+    </div>
+
+    <!-- LOT TRACKER -->
+    <div class="view" id="view-lots">
+      <div class="sec">LIQUIDATION LOT ROI</div>
+      <div class="lot-grid">
+        <div class="lc"><div class="lid">LOT-001 · B-STOCK</div><div class="lsrc">Electronics Pallet</div><div class="lstats"><div class="lsi"><div class="lsl">COST</div><div class="lsv y">$340</div></div><div class="lsi"><div class="lsl">ITEMS</div><div class="lsv b">24</div></div><div class="lsi"><div class="lsl">REV</div><div class="lsv g">$820</div></div></div><div class="lroi"><div class="rl">GROSS ROI</div><div class="rv">+141%</div></div></div>
+        <div class="lc"><div class="lid">LOT-002 · QUICKLOTZ</div><div class="lsrc">Mixed Goods</div><div class="lstats"><div class="lsi"><div class="lsl">COST</div><div class="lsv y">$180</div></div><div class="lsi"><div class="lsl">ITEMS</div><div class="lsv b">35</div></div><div class="lsi"><div class="lsl">REV</div><div class="lsv g">$490</div></div></div><div class="lroi"><div class="rl">GROSS ROI</div><div class="rv">+172%</div></div></div>
+        <div class="lc"><div class="lid">LOT-003 · LIQ.COM</div><div class="lsrc">Toys &amp; Games</div><div class="lstats"><div class="lsi"><div class="lsl">COST</div><div class="lsv y">$220</div></div><div class="lsi"><div class="lsl">ITEMS</div><div class="lsv b">18</div></div><div class="lsi"><div class="lsl">REV</div><div class="lsv g">$560</div></div></div><div class="lroi"><div class="rl">GROSS ROI</div><div class="rv">+155%</div></div></div>
+        <div class="lc"><div class="lid">LOT-004 · AUCTION</div><div class="lsrc">Mixed Haul</div><div class="lstats"><div class="lsi"><div class="lsl">COST</div><div class="lsv y">$95</div></div><div class="lsi"><div class="lsl">ITEMS</div><div class="lsv b">12</div></div><div class="lsi"><div class="lsl">REV</div><div class="lsv g">$318</div></div></div><div class="lroi"><div class="rl">GROSS ROI</div><div class="rv">+235%</div></div></div>
+      </div>
+    </div>
+
+    <!-- TAX VIEW -->
+    <div class="view" id="view-tax">
+      <div class="sec">2026 QUARTERLY TAX ESTIMATES</div>
+      <table class="tt">
+        <thead><tr><th>QUARTER</th><th>REVENUE</th><th>PROFIT</th><th>EST. TAX</th></tr></thead>
+        <tbody>
+          <tr><td>Q1 Jan–Mar</td><td>$3,840</td><td class="tp">$1,420</td><td class="td">$355.00</td></tr>
+          <tr><td>Q2 Apr–Jun</td><td>$5,210</td><td class="tp">$2,100</td><td class="td">$525.00</td></tr>
+          <tr><td>Q3 Jul–Sep</td><td>$4,650</td><td class="tp">$1,780</td><td class="td">$445.00</td></tr>
+          <tr><td>Q4 Oct–Dec</td><td>$6,900</td><td class="tp">$2,840</td><td class="td">$710.00</td></tr>
+        </tbody>
+      </table>
+      <div class="ti">
+        <div class="tit">🤠 Texas — 0% State Tax Pre-Configured</div>
+        <div class="tib">Set your rate once. Every sale updates your quarterly totals automatically. Check before each IRS deadline — your payment is already calculated.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="btm">
+    <div class="btm-l">
+      <strong>ResellBooks — $9.97</strong>
+      <span>Etsy · Instant Download · No Subscription</span>
+    </div>
+    <div class="btm-r">GET IT →</div>
+  </div>
+
+</div>
+
+<div class="ov" id="ov"></div>
+
+<script>
+function sv(name, el) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  el.classList.add('active');
+}
+
+const sales = [
+  { item:'Jordan 1s',   plat:'POSH', cls:'pb-psh', cost:'$45', price:'$155.00', profit:'$94.50',  margin:'60.9%', pp:155.00, pr:94.50 },
+  { item:'iPad Case',   plat:'AMZ',  cls:'pb-amz', cost:'$8',  price:'$28.99',  profit:'$17.54',  margin:'60.5%', pp:28.99,  pr:17.54 },
+  { item:'PS5 Gamepad', plat:'EBAY', cls:'pb-eby', cost:'$28', price:'$74.00',  profit:'$34.20',  margin:'46.2%', pp:74.00,  pr:34.20 },
+  { item:'Lululemon',   plat:'MER',  cls:'pb-mer', cost:'$18', price:'$62.00',  profit:'$35.80',  margin:'57.7%', pp:62.00,  pr:35.80 },
+];
+let idx=0, rev=4218.50, pro=1740.22;
+
+function ov(msg) {
+  const e=document.getElementById('ov');
+  e.textContent=msg; e.classList.add('show');
+  setTimeout(()=>e.classList.remove('show'),1800);
+}
+
+function tabs(n) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab')[n].classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  ['dashboard','sales','lots','tax'].forEach((nm,i)=>{
+    if(i===n) document.getElementById('view-'+nm).classList.add('active');
+  });
+}
+
+function animK(id, val, sfx='') {
+  const el=document.getElementById(id);
+  const kpi=el.closest('.kpi');
+  el.classList.add('ca'); kpi.classList.add('flash');
+  el.textContent = sfx ? val.toFixed(1)+sfx : '$'+val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  setTimeout(()=>{el.classList.remove('ca');kpi.classList.remove('flash');},400);
+}
+
+function addRow(s) {
+  const c=document.getElementById('sales-rows');
+  const r=document.createElement('div');
+  r.className='sr new';
+  r.innerHTML=`<div>${s.item}</div><div><span class="pb ${s.cls}">${s.plat}</span></div><div>${s.cost}</div><div>${s.price}</div><div class="pc">${s.profit}</div><div class="mc">${s.margin}</div>`;
+  c.insertBefore(r,c.firstChild);
+  setTimeout(()=>r.classList.remove('new'),2000);
+}
+
+function demo() {
+  const s=sales[idx%sales.length]; idx++;
+  setTimeout(()=>{tabs(1); ov('📦 Logging new sale...');},1000);
+  setTimeout(()=>{addRow(s); ov(`✅ ${s.item} → ${s.price}`);},3000);
+  setTimeout(()=>{tabs(0); ov('📊 Dashboard updated automatically');},5500);
+  setTimeout(()=>{
+    rev+=s.pp; pro+=s.pr;
+    animK('val-rev',rev);
+    animK('val-pro',pro);
+    animK('val-mar',(pro/rev*100),'%');
+    ov(`💰 +${s.profit} profit added`);
+  },7000);
+  setTimeout(()=>{tabs(2); ov('🏷️ Lot ROI auto-calculated');},10000);
+  setTimeout(()=>{tabs(3); ov('🧾 Tax estimates always current');},13000);
+  setTimeout(()=>{tabs(0);},16000);
+  setTimeout(demo,19000);
+}
+setTimeout(demo,2000);
+</script>
+</body>
+</html>
